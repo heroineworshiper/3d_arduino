@@ -39,6 +39,9 @@ cat /dev/ttyACM0
 Ctrl-C to exit & 
 reset to regain access to the terminal.
 
+To run it natively, just run ./3d in xterm.  Ctrl-C automatically resets
+the terminal.
+
 It doesn't work inside screen or minicom.  A few REGIS features don't
 work in xterm, like macrographs.  The graphics aren't drawn in realtime,
 but only when exiting REGIS mode.
