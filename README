@@ -36,6 +36,9 @@ To run it on an Arduino, upload it with the IDE, then in xterm:
 stty -F /dev/ttyACM0 ispeed 115200
 cat /dev/ttyACM0
 
+Ctrl-C to exit & 
+reset to regain access to the terminal.
+
 It doesn't work inside screen or minicom.  A few REGIS features don't
 work in xterm, like macrographs.  The graphics aren't drawn in realtime,
 but only when exiting REGIS mode.
