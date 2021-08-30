@@ -21,6 +21,12 @@ Uncomment a loop line & recompile to see a different model
 It's configured for a 480x480 resolution screen, which is what xterm
 defaults to.
 
+XTerm must be recompiled with REGIS enabled.
+./configure --enable-regis-graphics
+
+
+
+
 To set or delete a new terminal resolution:
     echo 'xterm*regisScreenSize:640x480' | xrdb -merge
     echo 'xterm*regisScreenSize' | xrdb -remove
