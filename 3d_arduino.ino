@@ -37,7 +37,9 @@
 // program it with the arduino IDE
 // cat /dev/ttyACM0 in the terminal
 
+// Run it natively:
 // g++ -O3 -o 3d 3d.C
+// ./3d
 
 
 
