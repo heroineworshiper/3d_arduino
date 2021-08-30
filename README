@@ -1,0 +1,46 @@
+3D animated graphics using the REGIS protocol
+
+
+This sends graphics over a serial port.
+This also shows how to do 3D graphics in pure software.
+
+
+genmodel.py generates the models which are plotted.  The need to
+optimize the number of polylines makes it hard to import an STL file.
+
+3d.C:
+3d_arduino.ino:
+Compile & run 3d.C on X86_64 or 3d_arduino.ino on Arduino to find out
+how far you can go on 8 bits.
+
+Uncomment a loop line & recompile to see a different model
+//    cube_loop();
+//    icos_loop();
+    gear_loop();
+
+It's configured for a 480x480 resolution screen, which is what xterm
+defaults to.
+
+To set or delete a new terminal resolution:
+    echo 'xterm*regisScreenSize:640x480' | xrdb -merge
+    echo 'xterm*regisScreenSize' | xrdb -remove
+Start a new xterm after xrdb.
+
+To run it on an Arduino, upload it with the IDE, then in xterm:
+stty -F /dev/ttyACM0 ispeed 115200
+cat /dev/ttyACM0
+
+It doesn't work inside screen or minicom.  A few REGIS features don't
+work in xterm, like macrographs.  The graphics aren't drawn in realtime,
+but only when exiting REGIS mode.
+
+
+
+
+
+
+
+
+
+
+
