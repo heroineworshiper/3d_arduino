@@ -16,7 +16,8 @@ how far you can go on 8 bits.
 Uncomment a loop line & recompile to see a different model
 //    cube_loop();
 //    icos_loop();
-    gear_loop();
+//    gear_loop();
+    glxgears_loop();
 
 It's configured for a 480x480 resolution screen, which is what xterm
 defaults to.

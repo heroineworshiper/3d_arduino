@@ -49,7 +49,7 @@
 #define H 480
 #define NEAR -100
 #define FAR 100
-#define FOV 4.0 // degrees
+#define FOV 3.0 // degrees
 
 #ifdef __x86_64__
 #include <stdio.h>
@@ -251,11 +251,11 @@ public:
     {
         identity();
         float f = 1.0f / tan(fov * 0.5f);
-        data[0] = f*aspectRatio;
+        data[0] = f * aspectRatio;
         data[5] = f;
-        data[10] = (far+near) / (far-near);
+        data[10] = (far + near) / (far - near);
         data[11] = 1.0f; /* this 'plugs' the old z into w */
-        data[14] = (2.0f*near*far) / (near-far);
+        data[14] = (2.0f * near * far) / (near - far);
         data[15] = 0.0f;
     }
 
@@ -425,12 +425,15 @@ point_t read_point(unsigned char **ptr)
 
 // draw the model
 // Must declare function prototype with user class to compile in Arduino
-void regis_plot(const point_t *model, int count, Matrix transform);
-void regis_plot(const point_t *model, int count, Matrix transform)
+void regis_plot(const point_t *model, int count, Matrix transform, int do_init);
+void regis_plot(const point_t *model, int count, Matrix transform, int do_init)
 {
-    enter_regis();
-    regis_clear();
+    if(do_init)
+    {
+        enter_regis();
+        regis_clear();
 //    regis_start_macro();
+    }
     unsigned char *ptr = (unsigned char*)model;
     for(int i = 0; i < count; i++)
     {
@@ -453,25 +456,68 @@ void regis_plot(const point_t *model, int count, Matrix transform)
         }
     }
 
+    if(do_init)
+    {
 //    regis_end_macro();
 //    regis_draw_macro();
 //    regis_clear_macro();
-    exit_regis();
+        exit_regis();
+    }
 }
 
 
 float angle = 0;
 float angle2 = 0;
 float angle3 = M_PI / 4;
+int counter = 0;
+void glxgears_loop()
+{
+    enter_regis();
+    regis_clear();
+
+//    Matrix view_rotx = Matrix::get_rx(-20.0 / 180 * M_PI);
+//    Matrix view_roty = Matrix::get_ry(30.0 / 180 * M_PI);
+    Matrix view_rotx = Matrix::get_rx(-10.0 / 180 * M_PI);
+    Matrix view_roty = Matrix::get_ry(angle2);
+    Matrix view_transform = Matrix::get_transform(1, 0, 1, 20);
+
+
+    Matrix big_matrix;
+    Matrix transform = Matrix::get_transform(1, -1, 2, 0);
+    Matrix rz = Matrix::get_rz(angle);
+    big_matrix = rz * transform * view_roty * view_rotx * view_transform * clipMatrix;
+    regis_plot(glxgear1, sizeof(glxgear1) / sizeof(point_t), big_matrix, 0);
+
+    transform = Matrix::get_transform(1, 5.1, 2, 0);
+    rz = Matrix::get_rz(-2.0 * angle + 3.0 / 180 * M_PI);
+    big_matrix = rz * transform * view_roty * view_rotx * view_transform * clipMatrix;
+    regis_plot(glxgear2, sizeof(glxgear2) / sizeof(point_t), big_matrix, 0);
+
+    transform = Matrix::get_transform(1, -1.1, -4.2, 0);
+    rz = Matrix::get_rz(-2.0 * angle + 30.0 / 180 * M_PI);
+    big_matrix = rz * transform * view_roty * view_rotx * view_transform * clipMatrix;
+    regis_plot(glxgear3, sizeof(glxgear3) / sizeof(point_t), big_matrix, 0);
+
+    angle += 2.0 / 180 * M_PI;
+    angle2 += 1.0 / 180 * M_PI;
+
+    exit_regis();
+
+
+#ifdef __x86_64__
+    usleep(50000);
+#endif
+}
+
 void gear_loop()
 {
-    Matrix transform = Matrix::get_transform(1, 0, 0, 7);
+    Matrix transform = Matrix::get_transform(1, 0, 0, 8);
     Matrix rz = Matrix::get_rz(angle);
     Matrix ry = Matrix::get_ry(angle2);
 
     Matrix big_matrix;
     big_matrix = rz * ry * transform * clipMatrix;
-    regis_plot(gear, sizeof(gear) / sizeof(point_t), big_matrix);
+    regis_plot(gear, sizeof(gear) / sizeof(point_t), big_matrix, 1);
 
     angle += 2.0 / 360 * M_PI * 2;
     angle2 += 1.0 / 360 * M_PI * 2;
@@ -483,14 +529,14 @@ void gear_loop()
 
 void cube_loop()
 {
-    Matrix transform = Matrix::get_transform(1, 0, 0, 9);
+    Matrix transform = Matrix::get_transform(1, 0, 0, 10);
     Matrix rz = Matrix::get_rz(angle);
     Matrix ry = Matrix::get_ry(angle2);
 
 
     Matrix big_matrix;
     big_matrix = rz * ry * transform * clipMatrix;
-    regis_plot(box, sizeof(box) / sizeof(point_t), big_matrix);
+    regis_plot(box, sizeof(box) / sizeof(point_t), big_matrix, 1);
 
 #ifdef __x86_64__
     usleep(50000);
@@ -506,7 +552,7 @@ void cube_loop()
 
 void icos_loop()
 {
-    Matrix transform = Matrix::get_transform(1, 0, 0, 7);
+    Matrix transform = Matrix::get_transform(1, 0, 0, 8);
     Matrix rz = Matrix::get_rz(angle);
 //    Matrix rx = Matrix::get_rx(angle2);
     Matrix rx = Matrix::get_rx(M_PI / 2);
@@ -516,7 +562,7 @@ void icos_loop()
     Matrix big_matrix;
     big_matrix = rx * ry * rz * transform * clipMatrix;
 
-    regis_plot(icos, sizeof(icos) / sizeof(point_t), big_matrix);
+    regis_plot(icos, sizeof(icos) / sizeof(point_t), big_matrix, 1);
 
 
 
@@ -567,7 +613,8 @@ void loop() {
 // put your main code here, to run repeatedly:
 //    cube_loop();
 //    icos_loop();
-    gear_loop();
+//    gear_loop();
+    glxgears_loop();
 }
 
 

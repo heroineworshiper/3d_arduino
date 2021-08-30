@@ -41,6 +41,63 @@ class Vector:
 def polToVec(r, a, z, beginPoly):
     return Vector(r * math.cos(a), r * math.sin(a), z, beginPoly)
 
+
+
+
+
+
+
+
+# from https://github.com/davidanthonygardner/glxgears/blob/master/glxgears.c
+def gear(inner_radius, outer_radius, width, teeth, tooth_depth):
+    output = []
+    r0 = inner_radius
+    r1 = outer_radius - tooth_depth / 2.0
+    r2 = outer_radius + tooth_depth / 2.0
+    da = 2.0 * math.pi / teeth / 4.0
+
+    da = 2.0 * math.pi / teeth / 4.0;
+    for side in range(0, 2):
+        beginPoly = 1
+        z = -width * 0.5 + side * width
+# teeth
+        for i in range(0, teeth + 1):
+           angle = i * 2.0 * math.pi / teeth;
+
+           output.append(polToVec(r1, angle, z, beginPoly))
+           output.append(polToVec(r2, angle + da, z, 0))
+           output.append(polToVec(r2, angle + 2 * da, z, 0))
+           output.append(polToVec(r1, angle + 3 * da, z, 0))
+           beginPoly = 0
+# shaft
+        beginPoly = 1
+        for i in range(0, teeth + 1):
+            angle = i * 2.0 * math.pi / teeth
+            output.append(polToVec(r0, angle, z, beginPoly))
+            beginPoly = 0
+
+# join sides
+    z0 = -width * 0.5
+    z1 = width * 0.5
+    for i in range(0, teeth + 1):
+        angle = i * 2.0 * math.pi / teeth
+        output.append(polToVec(r1, angle, z0, 1))
+        output.append(polToVec(r1, angle, z1, 0))
+        output.append(polToVec(r2, angle + da, z0, 1))
+        output.append(polToVec(r2, angle + da, z1, 0))
+        output.append(polToVec(r2, angle + 2 * da, z0, 1))
+        output.append(polToVec(r2, angle + 2 * da, z1, 0))
+        output.append(polToVec(r1, angle + 3 * da, z0, 1))
+        output.append(polToVec(r1, angle + 3 * da, z1, 0))
+        if i < teeth:
+            output.append(polToVec(r0, angle, z0, 1))
+            output.append(polToVec(r0, angle, z1, 0))
+
+    return output
+
+
+
+
 def makeGear():
     teeth = 12;
     r1 = 1.0;
@@ -200,5 +257,11 @@ printModel(output, "box")
 output = makeIcos()
 printModel(output, "icos")
 
+output = gear(1.0, 4.0, 1.0, 20, 0.7)
+printModel(output, "glxgear1")
+output = gear(0.5, 2.0, 2.0, 10, 0.7)
+printModel(output, "glxgear2")
+output = gear(1.3, 2.0, 0.5, 10, 0.7)
+printModel(output, "glxgear3")
 
 
