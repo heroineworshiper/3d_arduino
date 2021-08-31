@@ -13,11 +13,8 @@ optimize the number of polylines makes it hard to import an STL file.
 Compile & run 3d.C on X86_64 or 3d_arduino.ino on Arduino to find out
 how far you can go on 8 bits.
 
-Uncomment a loop line & recompile to see a different model
-//    cube_loop();
-//    icos_loop();
-//    gear_loop();
-    glxgears_loop();
+Change the demo line & recompile to see a different model
+    demo = CUBE;
 
 It's configured for a 480x480 resolution screen, which is what xterm
 defaults to.
@@ -33,16 +30,25 @@ To set or delete a new terminal resolution:
     echo 'xterm*regisScreenSize' | xrdb -remove
 Start a new xterm after xrdb.
 
-To run it on an Arduino, upload it with the IDE, then in xterm:
+To run it on an Arduino over a serial port, upload it with the IDE, then
+in xterm:
+
 stty -F /dev/ttyACM0 ispeed 115200
 cat /dev/ttyACM0
 
-Ctrl-C to exit & Ctrl-L to regain access to the terminal.
+Ctrl-C exit & Ctrl-L regain access to the terminal.
+
+It doesn't work inside screen or minicom.  To access the interactive
+menu in xterm without minicom, run
+
+stty -icanon min 1;sh -c 'cat /dev/ttyACM1&'; cat > /dev/ttyACM1
+
+
 
 To run it natively, just run ./3d in xterm.  Ctrl-C automatically resets
 the terminal.
 
-It doesn't work inside screen or minicom.  A few REGIS features don't
+A few REGIS features don't
 work in xterm, like macrographs.  The graphics aren't drawn in realtime,
 but only when exiting REGIS mode.
 

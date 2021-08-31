@@ -35,7 +35,12 @@
 // start new xterm after xrdb
 
 // program it with the arduino IDE
+// stty -F /dev/ttyACM0 ispeed 115200
+// stty icanon min 1
 // cat /dev/ttyACM0 in the terminal
+// sh -c 'cat /dev/ttyACM1&'; cat > /dev/ttyACM1
+
+
 
 // Run it natively:
 // g++ -O3 -o 3d 3d.C
@@ -44,6 +49,17 @@
 
 
 
+
+#define CUBE 0
+#define ICOS 1
+#define GEAR 2
+#define GLXGEARS 3
+
+// select a demo
+int demo = CUBE;
+int animate = 1;
+float user_rotx = 0;
+float user_roty = 0;
 
 #define W 480
 #define H 480
@@ -60,6 +76,7 @@
 #include <signal.h>
 #include <unistd.h>
 #include <time.h>
+#include <termios.h>
 
 #define PROGMEM
 
@@ -69,6 +86,11 @@ class Serial_
 public:
     static void begin(int x)
     {
+	    struct termios info;
+	    tcgetattr(fileno(stdin), &info);
+	    info.c_lflag &= ~ICANON;
+	    info.c_lflag &= ~ECHO;
+	    tcsetattr(fileno(stdin), TCSANOW, &info);
     }
 
     static void print(const char *x)
@@ -81,6 +103,34 @@ public:
     {
         printf("%d", x);
         fflush(stdout);
+    }
+
+    static int available()
+    {
+        fd_set rfds;
+		FD_ZERO(&rfds);
+		FD_SET(fileno(stdin), &rfds);
+		FD_SET(0, &rfds);
+		struct timeval timeout;
+		timeout.tv_sec = 0;
+		timeout.tv_usec = 0;
+		int result = select(fileno(stdin) + 1, 
+			&rfds, 
+			0, 
+			0, 
+			&timeout);
+
+		if(FD_ISSET(fileno(stdin), &rfds))
+        {
+            return 1;
+        }
+        return 0;
+    }
+    
+    static int read()
+    {
+        int c = getc(stdin);
+        return c;
     }
 
 };
@@ -386,6 +436,27 @@ void home_cursor()
     Serial.print("\e[H");
 }
 
+void cursor_pos(int x, int y)
+{
+    x += 1;
+    y += 1;
+    Serial.print("\e[");
+    Serial.print(y);
+    Serial.print(";");
+    Serial.print(x);
+    Serial.print("H");
+}
+
+void inverse_style()
+{
+    Serial.print("\e[7m");
+}
+
+void reset_style()
+{
+    Serial.print("\e[0m");
+}
+
 void clear_screen()
 {
     Serial.print("\e[2J");
@@ -522,51 +593,69 @@ void glxgears_loop()
     regis_set_palette(3, "B");
 
 
+    Matrix user_rotx_ = Matrix::get_rx(user_rotx);
+    Matrix user_roty_ = Matrix::get_ry(user_roty);
     Matrix view_rotx = Matrix::get_rx(0.0 / 180 * M_PI);
     Matrix view_roty = Matrix::get_ry(roty);
 //    Matrix view_rotx = Matrix::get_rx(-10.0 / 180 * M_PI);
 //    Matrix view_roty = Matrix::get_ry(angle2);
-    Matrix view_transform = Matrix::get_transform(1, -2, 1, 20);
+    Matrix view_transform = Matrix::get_transform(1, 0, 1, 20);
 
 
     Matrix big_matrix;
     Matrix transform = Matrix::get_transform(1, -1, 2, 0);
     Matrix rz = Matrix::get_rz(rotz);
-    big_matrix = rz * transform * view_roty * view_rotx * view_transform * clipMatrix;
+    big_matrix = rz * 
+        transform * 
+        view_roty * 
+        view_rotx * 
+        user_rotx_ * 
+        user_roty_ * 
+        view_transform * 
+        clipMatrix;
     regis_color(1);
     regis_plot(glxgear1, sizeof(glxgear1) / sizeof(point_t), big_matrix, 0);
 
 
     transform = Matrix::get_transform(1, 5.1, 2, 0);
     rz = Matrix::get_rz(-2.0 * rotz + 3.0 / 180 * M_PI);
-    big_matrix = rz * transform * view_roty * view_rotx * view_transform * clipMatrix;
+    big_matrix = rz * 
+        transform * 
+        view_roty * 
+        view_rotx * 
+        user_rotx_ * 
+        user_roty_ * 
+        view_transform * 
+        clipMatrix;
     regis_color(2);
     regis_plot(glxgear2, sizeof(glxgear2) / sizeof(point_t), big_matrix, 0);
 
     transform = Matrix::get_transform(1, -1.1, -4.2, 0);
     rz = Matrix::get_rz(-2.0 * rotz + 30.0 / 180 * M_PI);
-    big_matrix = rz * transform * view_roty * view_rotx * view_transform * clipMatrix;
+    big_matrix = rz * 
+        transform * 
+        view_roty * 
+        view_rotx * 
+        user_rotx_ * 
+        user_roty_ * 
+        view_transform * 
+        clipMatrix;
     regis_color(3);
     regis_plot(glxgear3, sizeof(glxgear3) / sizeof(point_t), big_matrix, 0);
 
     exit_regis();
 
 
-    rotz += 2.0 / 180 * M_PI;
-    roty += step;
-    if((step > 0 && roty >= 45.0 / 180 * M_PI) ||
-        (step < 0 && roty <= -45.0 / 180 * M_PI))
+    if(animate)
     {
-        step = -step;
+        rotz += 2.0 / 180 * M_PI;
+//        roty += step;
+        if((step > 0 && roty >= 45.0 / 180 * M_PI) ||
+            (step < 0 && roty <= -45.0 / 180 * M_PI))
+        {
+            step = -step;
+        }
     }
-//printf("roty=%f\n", roty * 180 / M_PI);
-
-//     home_cursor();
-//     Serial.print("ROTZ=");
-//     Serial.print((int)(rotz * 180 / M_PI));
-//     Serial.print(" ROTY=");
-//     Serial.print((int)(roty * 180 / M_PI));
-//     erase_to_end();
 
 #ifndef __AVR
     manage_fps();
@@ -579,19 +668,29 @@ void gear_loop()
     static float roty = 0;
     static float step2 = 1.0 / 180 * M_PI;
     Matrix transform = Matrix::get_transform(1, 0, 0, 8);
+    Matrix user_rotx_ = Matrix::get_rx(user_rotx);
+    Matrix user_roty_ = Matrix::get_ry(user_roty);
     Matrix rz = Matrix::get_rz(rotz);
     Matrix ry = Matrix::get_ry(roty);
 
     Matrix big_matrix;
-    big_matrix = rz * ry * transform * clipMatrix;
+    big_matrix = rz * 
+        ry * 
+        user_rotx_ * 
+        user_roty_ * 
+        transform * 
+        clipMatrix;
     regis_plot(gear, sizeof(gear) / sizeof(point_t), big_matrix, 1);
 
-    rotz += 2.0 / 360 * M_PI * 2;
-    roty += step2;
-    if((step2 > 0 && roty >= 45.0 / 180 * M_PI) ||
-        (step2 < 0 && roty <= -45.0 / 180 * M_PI))
+    if(animate)
     {
-        step2 = -step2;
+        rotz += 2.0 / 360 * M_PI * 2;
+//        roty += step2;
+        if((step2 > 0 && roty >= 45.0 / 180 * M_PI) ||
+            (step2 < 0 && roty <= -45.0 / 180 * M_PI))
+        {
+            step2 = -step2;
+        }
     }
 
 #ifndef __AVR
@@ -604,12 +703,19 @@ void cube_loop()
     static float rotz = 0;
     static float roty = 0;
     Matrix transform = Matrix::get_transform(1, 0, 0, 10);
+    Matrix user_rotx_ = Matrix::get_rx(user_rotx);
+    Matrix user_roty_ = Matrix::get_ry(user_roty);
     Matrix rz = Matrix::get_rz(rotz);
     Matrix ry = Matrix::get_ry(roty);
 
 
     Matrix big_matrix;
-    big_matrix = rz * ry * transform * clipMatrix;
+    big_matrix = rz * 
+        ry * 
+        user_rotx_ * 
+        user_roty_ * 
+        transform * 
+        clipMatrix;
     regis_plot(box, sizeof(box) / sizeof(point_t), big_matrix, 1);
 
 #ifndef __AVR
@@ -618,8 +724,11 @@ void cube_loop()
     delay(30);
 #endif
 
-    rotz += 2.0 / 360 * M_PI * 2;
-    roty += .5 / 360 * M_PI * 2;
+    if(animate)
+    {
+        rotz += 2.0 / 360 * M_PI * 2;
+//        roty += .5 / 360 * M_PI * 2;
+    }
 }
 
 
@@ -630,13 +739,20 @@ void icos_loop()
     static float roty = 0;
     Matrix transform = Matrix::get_transform(1, 0, 0, 8);
     Matrix rz = Matrix::get_rz(rotz);
-//    Matrix rx = Matrix::get_rx(angle2);
+    Matrix user_rotx_ = Matrix::get_rx(user_rotx);
+    Matrix user_roty_ = Matrix::get_ry(user_roty);
     Matrix rx = Matrix::get_rx(M_PI / 2);
     Matrix ry = Matrix::get_ry(roty);
 
 
     Matrix big_matrix;
-    big_matrix = rx * ry * rz * transform * clipMatrix;
+    big_matrix = rx * 
+        ry * 
+        rz * 
+        user_rotx_ * 
+        user_roty_ * 
+        transform * 
+        clipMatrix;
 
     regis_plot(icos, sizeof(icos) / sizeof(point_t), big_matrix, 1);
 
@@ -648,14 +764,67 @@ void icos_loop()
 //    delay(50);
 #endif
 
-    rotz += .25 / 360 * M_PI * 2;
-    roty += 2.0 / 360 * M_PI * 2;
+    if(animate)
+    {
+//        rotz += .25 / 360 * M_PI * 2;
+        roty += 2.0 / 360 * M_PI * 2;
+    }
+}
+
+
+// This assumes an 80 column screen with the default xterm graphics size
+void menu()
+{
+    int x = 60;
+    clear_screen();
+    cursor_pos(x, 0);
+    if(demo == CUBE)
+    {
+        inverse_style();
+    }
+    Serial.print("1 - CUBE");
+    reset_style();
+    cursor_pos(x, 2);
+    if(demo == ICOS)
+    {
+        inverse_style();
+    }
+    Serial.print("2 - ICOS");
+    reset_style();
+    cursor_pos(x, 4);
+    if(demo == GEAR)
+    {
+        inverse_style();
+    }
+    Serial.print("3 - GEAR");
+    reset_style();
+    cursor_pos(x, 6);
+    if(demo == GLXGEARS)
+    {
+        inverse_style();
+    }
+    Serial.print("4 - GLXGEARS");
+    reset_style();
+    cursor_pos(x, 8);
+    if(animate)
+    {
+        inverse_style();
+    }
+    Serial.print("' ' - ANIMATE");
+    reset_style();
+
+    cursor_pos(x, 10);
+    Serial.print("ASDW - ROTATE");
+
+    cursor_pos(x, 12);
+    Serial.print(">");
 }
 
 void setup() {
     Serial.begin (115200);
 
     begin_projection();
+    menu();
 
 // test Matrix
 #if 0
@@ -686,11 +855,88 @@ void setup() {
 }
 
 void loop() {
+    int need_redraw = 0;
+    while(Serial.available())
+    {
+        char c = Serial.read();
+        switch(c)
+        {
+            case '1':
+                demo = CUBE;
+                menu();
+                need_redraw = 1;
+                user_rotx = 0;
+                user_roty = 0;
+                break;
+            case '2':
+                demo = ICOS;
+                menu();
+                need_redraw = 1;
+                user_rotx = 0;
+                user_roty = 0;
+                break;
+            case '3':
+                demo = GEAR;
+                menu();
+                need_redraw = 1;
+                user_rotx = 0;
+                user_roty = 0;
+                break;
+            case '4':
+                demo = GLXGEARS;
+                menu();
+                need_redraw = 1;
+                user_rotx = 0;
+                user_roty = 0;
+                break;
+            case ' ':
+                animate = !animate;
+                menu();
+                need_redraw = 1;
+                break;
+            case '\n':
+                menu();
+                need_redraw = 1;
+                break;
+            case 'a':
+                user_roty -= 5.0 / 180.0 * M_PI;
+                need_redraw = 1;
+                break;
+            case 'd':
+                user_roty += 5.0 / 180.0 * M_PI;
+                need_redraw = 1;
+                break;
+            case 's':
+                user_rotx += 5.0 / 180.0 * M_PI;
+                need_redraw = 1;
+                break;
+            case 'w':
+                user_rotx -= 5.0 / 180.0 * M_PI;
+                need_redraw = 1;
+                break;
+        }
+    }
+
+    if(animate || need_redraw)
+    {
+        switch(demo)
+        {
+            case CUBE:
+                cube_loop();
+                break;
+            case ICOS:
+                icos_loop();
+                break;
+            case GEAR:
+                gear_loop();
+                break;
+            case GLXGEARS:
+                glxgears_loop();
+                break;
+        }
+        need_redraw = 0;
+    }
 // put your main code here, to run repeatedly:
-//    cube_loop();
-//    icos_loop();
-//    gear_loop();
-    glxgears_loop();
 }
 
 
@@ -705,7 +951,13 @@ void loop() {
 
 void sig_catch(int sig)
 {
+// reset the console
     exit_regis();
+	struct termios info;
+	tcgetattr(fileno(stdin), &info);
+	info.c_lflag |= ICANON;
+	info.c_lflag |= ECHO;
+	tcsetattr(fileno(stdin), TCSANOW, &info);
     exit(0);
 }
 
