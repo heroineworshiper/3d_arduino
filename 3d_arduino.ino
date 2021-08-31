@@ -50,14 +50,16 @@
 #define NEAR -100
 #define FAR 100
 #define FOV 3.0 // degrees
+#define FPS 15 // max FPS
 
-#ifdef __x86_64__
+#ifndef __AVR
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
 #include <unistd.h>
+#include <time.h>
 
 #define PROGMEM
 
@@ -85,7 +87,7 @@ public:
 
 Serial_ Serial;
 
-#endif
+#endif // !__AVR
 
 #include "models.h"
 
@@ -154,7 +156,8 @@ public:
         }
     }
 
-#ifdef __x86_64__
+#ifndef __AVR
+
     void dump()
     {
         for(int i = 0; i < 4; i++)
@@ -354,6 +357,28 @@ void regis_box(Vector topleft, Vector bottomright)
         (int)topleft.y);
 }
 
+// https://vt100.net/docs/vt3xx-gp/chapter2.html#S2.4
+// set a palette entry to a color.  Index 0 is used for erase.
+// REGIS has no direct control of RGB.  It only uses HSV or 8 presets.
+// c is "D" "R" "G" "B" "C" "Y" "M" "W"
+void regis_set_palette(int index, const char *c)
+{
+    Serial.print("S(M");
+    Serial.print(index);
+    Serial.print("(A");
+    Serial.print(c);
+    Serial.print("))");
+}
+
+// select the palette entry for drawing
+void regis_color(int index)
+{
+// select palette index 1 for drawing
+    Serial.print("W(I");
+    Serial.print(index);
+    Serial.print(")");
+}
+
 
 // VT100 codes
 void home_cursor()
@@ -396,7 +421,7 @@ Vector project(Vector src)
     return src;
 }
 
-#ifdef __x86_64__
+#ifndef __AVR
 point_t read_point(unsigned char **ptr)
 {
     point_t result;
@@ -405,7 +430,23 @@ point_t read_point(unsigned char **ptr)
     (*ptr) += sizeof(point_t);
     return result;
 }
-#else // __x86_64__
+
+void manage_fps()
+{
+    static struct timespec start_time = { 0 };
+    struct timespec current_time;
+    clock_gettime(CLOCK_MONOTONIC, &current_time);
+    
+    int diff = current_time.tv_sec * 1000 + current_time.tv_nsec / 1e6 - 
+        start_time.tv_sec * 1000 - start_time.tv_nsec / 1e6;
+    start_time = current_time;
+    if(diff < 1000 / FPS)
+    {
+        usleep((1000 / FPS - diff) * 1000);
+    }
+}
+
+#else // !__AVR
 
 // read a point from atmega flash
 point_t read_point(unsigned char **ptr)
@@ -420,7 +461,7 @@ point_t read_point(unsigned char **ptr)
     return result;
 }
 
-#endif // !__x86_64__
+#endif // !__AVR
 
 
 // draw the model
@@ -432,6 +473,8 @@ void regis_plot(const point_t *model, int count, Matrix transform, int do_init)
     {
         enter_regis();
         regis_clear();
+        regis_set_palette(1, "W");
+        regis_color(1);
 //    regis_start_macro();
     }
     unsigned char *ptr = (unsigned char*)model;
@@ -466,97 +509,130 @@ void regis_plot(const point_t *model, int count, Matrix transform, int do_init)
 }
 
 
-float angle = 0;
-float angle2 = 0;
-float angle3 = M_PI / 4;
-int counter = 0;
 void glxgears_loop()
 {
+    static float rotz = 0;
+    static float roty = 30.0 / 180 * M_PI;
+    static float step = -1.0 / 180 * M_PI;
     enter_regis();
     regis_clear();
+// define the color palette
+    regis_set_palette(1, "R");
+    regis_set_palette(2, "G");
+    regis_set_palette(3, "B");
 
-//    Matrix view_rotx = Matrix::get_rx(-20.0 / 180 * M_PI);
-//    Matrix view_roty = Matrix::get_ry(30.0 / 180 * M_PI);
-    Matrix view_rotx = Matrix::get_rx(-10.0 / 180 * M_PI);
-    Matrix view_roty = Matrix::get_ry(angle2);
-    Matrix view_transform = Matrix::get_transform(1, 0, 1, 20);
+
+    Matrix view_rotx = Matrix::get_rx(0.0 / 180 * M_PI);
+    Matrix view_roty = Matrix::get_ry(roty);
+//    Matrix view_rotx = Matrix::get_rx(-10.0 / 180 * M_PI);
+//    Matrix view_roty = Matrix::get_ry(angle2);
+    Matrix view_transform = Matrix::get_transform(1, -2, 1, 20);
 
 
     Matrix big_matrix;
     Matrix transform = Matrix::get_transform(1, -1, 2, 0);
-    Matrix rz = Matrix::get_rz(angle);
+    Matrix rz = Matrix::get_rz(rotz);
     big_matrix = rz * transform * view_roty * view_rotx * view_transform * clipMatrix;
+    regis_color(1);
     regis_plot(glxgear1, sizeof(glxgear1) / sizeof(point_t), big_matrix, 0);
 
+
     transform = Matrix::get_transform(1, 5.1, 2, 0);
-    rz = Matrix::get_rz(-2.0 * angle + 3.0 / 180 * M_PI);
+    rz = Matrix::get_rz(-2.0 * rotz + 3.0 / 180 * M_PI);
     big_matrix = rz * transform * view_roty * view_rotx * view_transform * clipMatrix;
+    regis_color(2);
     regis_plot(glxgear2, sizeof(glxgear2) / sizeof(point_t), big_matrix, 0);
 
     transform = Matrix::get_transform(1, -1.1, -4.2, 0);
-    rz = Matrix::get_rz(-2.0 * angle + 30.0 / 180 * M_PI);
+    rz = Matrix::get_rz(-2.0 * rotz + 30.0 / 180 * M_PI);
     big_matrix = rz * transform * view_roty * view_rotx * view_transform * clipMatrix;
+    regis_color(3);
     regis_plot(glxgear3, sizeof(glxgear3) / sizeof(point_t), big_matrix, 0);
-
-    angle += 2.0 / 180 * M_PI;
-    angle2 += 1.0 / 180 * M_PI;
 
     exit_regis();
 
 
-#ifdef __x86_64__
-    usleep(50000);
+    rotz += 2.0 / 180 * M_PI;
+    roty += step;
+    if((step > 0 && roty >= 45.0 / 180 * M_PI) ||
+        (step < 0 && roty <= -45.0 / 180 * M_PI))
+    {
+        step = -step;
+    }
+//printf("roty=%f\n", roty * 180 / M_PI);
+
+//     home_cursor();
+//     Serial.print("ROTZ=");
+//     Serial.print((int)(rotz * 180 / M_PI));
+//     Serial.print(" ROTY=");
+//     Serial.print((int)(roty * 180 / M_PI));
+//     erase_to_end();
+
+#ifndef __AVR
+    manage_fps();
 #endif
 }
 
 void gear_loop()
 {
+    static float rotz = 0;
+    static float roty = 0;
+    static float step2 = 1.0 / 180 * M_PI;
     Matrix transform = Matrix::get_transform(1, 0, 0, 8);
-    Matrix rz = Matrix::get_rz(angle);
-    Matrix ry = Matrix::get_ry(angle2);
+    Matrix rz = Matrix::get_rz(rotz);
+    Matrix ry = Matrix::get_ry(roty);
 
     Matrix big_matrix;
     big_matrix = rz * ry * transform * clipMatrix;
     regis_plot(gear, sizeof(gear) / sizeof(point_t), big_matrix, 1);
 
-    angle += 2.0 / 360 * M_PI * 2;
-    angle2 += 1.0 / 360 * M_PI * 2;
+    rotz += 2.0 / 360 * M_PI * 2;
+    roty += step2;
+    if((step2 > 0 && roty >= 45.0 / 180 * M_PI) ||
+        (step2 < 0 && roty <= -45.0 / 180 * M_PI))
+    {
+        step2 = -step2;
+    }
 
-#ifdef __x86_64__
-    usleep(50000);
+#ifndef __AVR
+    manage_fps();
 #endif
 }
 
 void cube_loop()
 {
+    static float rotz = 0;
+    static float roty = 0;
     Matrix transform = Matrix::get_transform(1, 0, 0, 10);
-    Matrix rz = Matrix::get_rz(angle);
-    Matrix ry = Matrix::get_ry(angle2);
+    Matrix rz = Matrix::get_rz(rotz);
+    Matrix ry = Matrix::get_ry(roty);
 
 
     Matrix big_matrix;
     big_matrix = rz * ry * transform * clipMatrix;
     regis_plot(box, sizeof(box) / sizeof(point_t), big_matrix, 1);
 
-#ifdef __x86_64__
-    usleep(50000);
+#ifndef __AVR
+    manage_fps();
 #else
     delay(30);
 #endif
 
-    angle += 2.0 / 360 * M_PI * 2;
-    angle2 += .5 / 360 * M_PI * 2;
+    rotz += 2.0 / 360 * M_PI * 2;
+    roty += .5 / 360 * M_PI * 2;
 }
 
 
 
 void icos_loop()
 {
+    static float rotz = 0;
+    static float roty = 0;
     Matrix transform = Matrix::get_transform(1, 0, 0, 8);
-    Matrix rz = Matrix::get_rz(angle);
+    Matrix rz = Matrix::get_rz(rotz);
 //    Matrix rx = Matrix::get_rx(angle2);
     Matrix rx = Matrix::get_rx(M_PI / 2);
-    Matrix ry = Matrix::get_ry(angle2);
+    Matrix ry = Matrix::get_ry(roty);
 
 
     Matrix big_matrix;
@@ -566,14 +642,14 @@ void icos_loop()
 
 
 
-#ifdef __x86_64__
-    usleep(50000);
+#ifndef __AVR
+    manage_fps();
 #else
 //    delay(50);
 #endif
 
-    angle += .25 / 360 * M_PI * 2;
-    angle2 += 2.0 / 360 * M_PI * 2;
+    rotz += .25 / 360 * M_PI * 2;
+    roty += 2.0 / 360 * M_PI * 2;
 }
 
 void setup() {
@@ -625,7 +701,7 @@ void loop() {
 
 
 
-#ifdef __x86_64__
+#ifndef __AVR
 
 void sig_catch(int sig)
 {

@@ -37,8 +37,7 @@ To run it on an Arduino, upload it with the IDE, then in xterm:
 stty -F /dev/ttyACM0 ispeed 115200
 cat /dev/ttyACM0
 
-Ctrl-C to exit & 
-reset to regain access to the terminal.
+Ctrl-C to exit & Ctrl-L to regain access to the terminal.
 
 To run it natively, just run ./3d in xterm.  Ctrl-C automatically resets
 the terminal.
