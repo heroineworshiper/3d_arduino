@@ -597,8 +597,6 @@ void glxgears_loop()
     Matrix user_roty_ = Matrix::get_ry(user_roty);
     Matrix view_rotx = Matrix::get_rx(0.0 / 180 * M_PI);
     Matrix view_roty = Matrix::get_ry(roty);
-//    Matrix view_rotx = Matrix::get_rx(-10.0 / 180 * M_PI);
-//    Matrix view_roty = Matrix::get_ry(angle2);
     Matrix view_transform = Matrix::get_transform(1, 0, 1, 20);
 
 
@@ -617,8 +615,8 @@ void glxgears_loop()
     regis_plot(glxgear1, sizeof(glxgear1) / sizeof(point_t), big_matrix, 0);
 
 
-    transform = Matrix::get_transform(1, 5.1, 2, 0);
-    rz = Matrix::get_rz(-2.0 * rotz + 3.0 / 180 * M_PI);
+    transform = Matrix::get_transform(1, 5.2, 2, 0);
+    rz = Matrix::get_rz(-2.0 * rotz + 9.0 / 180 * M_PI);
     big_matrix = rz * 
         transform * 
         view_roty * 
@@ -773,58 +771,88 @@ void icos_loop()
 
 
 // This assumes an 80 column screen with the default xterm graphics size
-void menu()
+void menu(int clear)
 {
     int x = 60;
-    clear_screen();
-    cursor_pos(x, 0);
+    int y = 0;
+    if(clear)
+    {
+        clear_screen();
+    }
+
+    cursor_pos(x, y);
+    y += 2;
     if(demo == CUBE)
     {
         inverse_style();
     }
     Serial.print("1 - CUBE");
     reset_style();
-    cursor_pos(x, 2);
+    erase_to_end();
+
+    cursor_pos(x, y);
+    y += 2;
     if(demo == ICOS)
     {
         inverse_style();
     }
     Serial.print("2 - ICOS");
     reset_style();
-    cursor_pos(x, 4);
+    erase_to_end();
+
+    cursor_pos(x, y);
+    y += 2;
     if(demo == GEAR)
     {
         inverse_style();
     }
     Serial.print("3 - GEAR");
     reset_style();
-    cursor_pos(x, 6);
+    erase_to_end();
+
+    cursor_pos(x, y);
+    y += 2;
     if(demo == GLXGEARS)
     {
         inverse_style();
     }
     Serial.print("4 - GLXGEARS");
     reset_style();
-    cursor_pos(x, 8);
+    erase_to_end();
+
+    cursor_pos(x, y);
+    y += 2;
     if(animate)
     {
         inverse_style();
     }
     Serial.print("' ' - ANIMATE");
     reset_style();
+    erase_to_end();
 
-    cursor_pos(x, 10);
-    Serial.print("ASDW - ROTATE");
-
-    cursor_pos(x, 12);
+    cursor_pos(x, y);
+    y += 2;
+    Serial.print("AD - PAN (");
+    Serial.print((int)(user_roty * 180 / M_PI));
+    Serial.print(")");
+    erase_to_end();
+    cursor_pos(x, y);
+    y += 2;
+    Serial.print("SW - TILT (");
+    Serial.print((int)(user_rotx * 180 / M_PI));
+    Serial.print(")");
+    erase_to_end();
+    cursor_pos(x, y);
+    y += 2;
     Serial.print(">");
+    erase_to_end();
 }
 
 void setup() {
     Serial.begin (115200);
 
     begin_projection();
-    menu();
+    menu(1);
 
 // test Matrix
 #if 0
@@ -863,55 +891,59 @@ void loop() {
         {
             case '1':
                 demo = CUBE;
-                menu();
                 need_redraw = 1;
                 user_rotx = 0;
                 user_roty = 0;
+                menu(0);
                 break;
             case '2':
                 demo = ICOS;
-                menu();
                 need_redraw = 1;
                 user_rotx = 0;
                 user_roty = 0;
+                menu(0);
                 break;
             case '3':
                 demo = GEAR;
-                menu();
                 need_redraw = 1;
                 user_rotx = 0;
                 user_roty = 0;
+                menu(0);
                 break;
             case '4':
                 demo = GLXGEARS;
-                menu();
                 need_redraw = 1;
                 user_rotx = 0;
                 user_roty = 0;
+                menu(0);
                 break;
             case ' ':
                 animate = !animate;
-                menu();
                 need_redraw = 1;
+                menu(0);
                 break;
             case '\n':
-                menu();
                 need_redraw = 1;
+                menu(0);
                 break;
             case 'a':
                 user_roty -= 5.0 / 180.0 * M_PI;
                 need_redraw = 1;
+                menu(0);
                 break;
             case 'd':
                 user_roty += 5.0 / 180.0 * M_PI;
+                menu(0);
                 need_redraw = 1;
                 break;
             case 's':
-                user_rotx += 5.0 / 180.0 * M_PI;
+                user_rotx -= 5.0 / 180.0 * M_PI;
+                menu(0);
                 need_redraw = 1;
                 break;
             case 'w':
-                user_rotx -= 5.0 / 180.0 * M_PI;
+                user_rotx += 5.0 / 180.0 * M_PI;
+                menu(0);
                 need_redraw = 1;
                 break;
         }
